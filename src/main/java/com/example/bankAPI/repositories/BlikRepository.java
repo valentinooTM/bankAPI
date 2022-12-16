@@ -42,7 +42,6 @@ public class BlikRepository {
     }
     public boolean saveBlik(Blik blik) {
         if (getBlikByNum(blik.getBlik_num()) != null) {
-            System.out.println("test");
             jdbcTemplate.update("UPDATE blik_nums SET demanded_money=?, account_num=?, target_account=?, status=? WHERE blik_num=?",
                     blik.getDemanded_money(),
                     blik.getAccount_num(),
