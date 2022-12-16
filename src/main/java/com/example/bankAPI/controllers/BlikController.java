@@ -24,12 +24,12 @@ public class BlikController {
 
     @PostMapping("/generate-blik/{account_num}")
     public Blik generateBlik(@PathVariable("account_num") String accountNum){
-        Integer blikNum = getRandomCode();
+        String blikNum = getRandomCode();
         return blikRepository.addBlik(blikNum, accountNum);
     }
 
     @PostMapping("/pay/{blik_num}/{demanded_money}/{target_account_num}")
-    public String blikPayment(@PathVariable("blik_num") Integer blikNum,
+    public String blikPayment(@PathVariable("blik_num") String blikNum,
                               @PathVariable("demanded_money")BigDecimal demandedMoney,
                               @PathVariable("target_account_num")String targetAccountNum){
         Blik blik = blikRepository.getBlikByNum(blikNum);
@@ -52,12 +52,12 @@ public class BlikController {
         return "success";
     }
 
-    private Integer getRandomCode(){
+    private String getRandomCode(){
         String code = "";
         for(int j=0; j<6; j++) {
             code += randomInt(0, 9);
         }
-        return Integer.parseInt(code);
+        return code;
     }
     private int randomInt(int min, int max){
         return min + (int)(Math.random() * ((max - min) + 1));

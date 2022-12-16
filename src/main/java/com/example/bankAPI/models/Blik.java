@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Data
 public class Blik {
-    private int blik_num;
+    private String blik_num;
     private BigDecimal demanded_money;
     private String account_num;
 }

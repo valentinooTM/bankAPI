@@ -14,4 +14,5 @@ public class Account {
     private String name;
     private String surname;
     private BigDecimal balance;
+    private String password;
 }

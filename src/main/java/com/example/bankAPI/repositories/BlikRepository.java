@@ -15,7 +15,7 @@ public class BlikRepository {
     @Autowired
     AccountRepository accountRepository;
 
-    public Blik addBlik(int blikNum, String accountNum) throws NoAccountException{
+    public Blik addBlik(String blikNum, String accountNum) throws NoAccountException{
         if(accountRepository.getAccountByAccountNum(accountNum) == null){
             throw new NoAccountException("Konto nie istnieje");
         }
@@ -28,7 +28,7 @@ public class BlikRepository {
         return blik;
     }
 
-    public Blik getBlikByNum(int blikNum){
+    public Blik getBlikByNum(String blikNum){
         try {
             return jdbcTemplate.queryForObject("SELECT * FROM blik_nums WHERE blik_num=?",
                     BeanPropertyRowMapper.newInstance(Blik.class),
