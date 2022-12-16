@@ -20,6 +20,9 @@ public class AccountController {
     @PostMapping("/login/{account_num}/{password}")
     public ResponseEntity<Account> login(@PathVariable String account_num, @PathVariable String password){
         Account account = accountRepository.getAccountByAccountNum(account_num);
+        if(account == null){
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        }
         if(!account.getPassword().equals(password)){
             return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }

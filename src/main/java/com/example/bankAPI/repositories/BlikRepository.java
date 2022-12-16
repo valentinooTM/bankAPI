@@ -41,13 +41,14 @@ public class BlikRepository {
         }
     }
     public boolean saveBlik(Blik blik) {
-        if (getBlikByNum(blik.getAccount_num()) != null) {
-            jdbcTemplate.update("UPDATE accounts SET demanded_money=?, account_num=?, target_account=? status=? WHERE account_num=?",
+        if (getBlikByNum(blik.getBlik_num()) != null) {
+            System.out.println("test");
+            jdbcTemplate.update("UPDATE blik_nums SET demanded_money=?, account_num=?, target_account=?, status=? WHERE blik_num=?",
                     blik.getDemanded_money(),
                     blik.getAccount_num(),
                     blik.getTarget_account(),
                     blik.getStatus().toString(),
-                    blik.getAccount_num());
+                    blik.getBlik_num());
             return true;
         }
         return false;

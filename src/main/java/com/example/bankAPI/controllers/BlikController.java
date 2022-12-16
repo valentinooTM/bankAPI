@@ -26,6 +26,12 @@ public class BlikController {
     @PostMapping("/generate-blik/{account_num}")
     public Blik generateBlik(@PathVariable("account_num") String accountNum){
         String blikNum = getRandomCode();
+        for (Blik blik: blikRepository.getAllBliksFromAccount(accountNum)) {
+            if(blik.getStatus().equals(BlikStatus.active)){
+                return blik;
+            }
+        }
+        new BlikExpireTask(blikNum, blikRepository).start();
         return blikRepository.addBlik(blikNum, accountNum);
     }
 
@@ -37,6 +43,9 @@ public class BlikController {
         if (blik == null){
             return "Zły kod blik";
         }
+        if(blik.getStatus() != BlikStatus.active){
+            return "Nieaktywny kod blik";
+        }
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
         Account targetAccount = accountRepository.getAccountByAccountNum(targetAccountNum);
         if(targetAccount == null){
@@ -45,11 +54,11 @@ public class BlikController {
         if(demandedMoney.compareTo(account.getBalance()) >= 0){
             return "Niewystarczająca ilość środków na koncie";
         }
-        account.setBalance(account.getBalance().subtract(demandedMoney));
-        targetAccount.setBalance(targetAccount.getBalance().add(demandedMoney));
-
-        accountRepository.saveAccount(account);
-        accountRepository.saveAccount(targetAccount);
+        blik.setStatus(BlikStatus.to_confirm);
+        blik.setDemanded_money(demandedMoney);
+        blik.setTarget_account(targetAccountNum);
+        System.out.println(blik.getStatus());
+        blikRepository.saveBlik(blik);
         return "success";
     }
 
@@ -65,6 +74,9 @@ public class BlikController {
         Blik blik = blikRepository.getBlikByNum(blik_num);
         Account targetAccount = accountRepository.getAccountByAccountNum(blik.getTarget_account());
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
+        if(targetAccount == null){
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
+        }
         if(!account.getPassword().equals(password)){
             return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         }
@@ -79,17 +91,45 @@ public class BlikController {
     public void getConfirmation(@PathVariable String blik_num, @PathVariable String password){
         Blik blik = blikRepository.getBlikByNum(blik_num);
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
+        Account targetAccount = accountRepository.getAccountByAccountNum(blik.getTarget_account());
+        if(targetAccount == null){
+            return;
+        }
         if(blik.getStatus() != BlikStatus.to_confirm){
             return;
         }
         if(!account.getPassword().equals(password)) {
             return;
         }
+
+        account.setBalance(account.getBalance().subtract(blik.getDemanded_money()));
+        targetAccount.setBalance(targetAccount.getBalance().add(blik.getDemanded_money()));
+
+        accountRepository.saveAccount(account);
+        accountRepository.saveAccount(targetAccount);
+
         blik.setStatus(BlikStatus.used);
         blikRepository.saveBlik(blik);
     }
 
-
+    private class BlikExpireTask extends Thread{
+        private String blikNum;
+        private BlikRepository blikRepository;
+        public BlikExpireTask(String blikNum, BlikRepository blikRepository){
+            this.blikNum = blikNum;
+            this.blikRepository = blikRepository;
+        }
+        public void run(){
+            try{
+                Thread.sleep(120_000);
+                Blik blik = blikRepository.getBlikByNum(blikNum);
+                if(blik.getStatus() != BlikStatus.used){
+                    blik.setStatus(BlikStatus.expired);
+                    blikRepository.saveBlik(blik);
+                }
+            } catch(InterruptedException e){}
+        }
+    }
 
     private String getRandomCode(){
         String code = "";
@@ -101,4 +141,5 @@ public class BlikController {
     private int randomInt(int min, int max){
         return min + (int)(Math.random() * ((max - min) + 1));
     }
+
 }
