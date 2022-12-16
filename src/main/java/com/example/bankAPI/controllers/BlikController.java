@@ -3,13 +3,14 @@ package com.example.bankAPI.controllers;
 import com.example.bankAPI.exceptions.NoAccountException;
 import com.example.bankAPI.models.Account;
 import com.example.bankAPI.models.Blik;
+import com.example.bankAPI.models.BlikStatus;
+import com.example.bankAPI.models.Confirmation;
 import com.example.bankAPI.repositories.AccountRepository;
 import com.example.bankAPI.repositories.BlikRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -51,6 +52,44 @@ public class BlikController {
         accountRepository.saveAccount(targetAccount);
         return "success";
     }
+
+    @GetMapping("/check-status/{blik_num}")
+    public String checkStatus(@PathVariable String blik_num){
+        Blik blik = blikRepository.getBlikByNum(blik_num);
+        return blik.getStatus().toString();
+    }
+
+    @GetMapping("/confirm/{blik_num}/{password}")
+    public ResponseEntity<Confirmation> sendConfirmData(@PathVariable String blik_num, @PathVariable String password){
+        Confirmation conf = new Confirmation();
+        Blik blik = blikRepository.getBlikByNum(blik_num);
+        Account targetAccount = accountRepository.getAccountByAccountNum(blik.getTarget_account());
+        Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
+        if(!account.getPassword().equals(password)){
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        }
+        conf.setDemandedMoney(blik.getDemanded_money());
+        conf.setTargetAccount(blik.getTarget_account());
+        conf.setTargetAccountOwnerName(targetAccount.getName());
+        conf.setTargetAccountOwnerSurname(targetAccount.getSurname());
+        return new ResponseEntity<>(conf, HttpStatus.OK);
+    }
+
+    @PostMapping("/confirm/{blik_num}/{password}")
+    public void getConfirmation(@PathVariable String blik_num, @PathVariable String password){
+        Blik blik = blikRepository.getBlikByNum(blik_num);
+        Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
+        if(blik.getStatus() != BlikStatus.to_confirm){
+            return;
+        }
+        if(!account.getPassword().equals(password)) {
+            return;
+        }
+        blik.setStatus(BlikStatus.used);
+        blikRepository.saveBlik(blik);
+    }
+
+
 
     private String getRandomCode(){
         String code = "";

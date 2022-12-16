@@ -1,6 +1,7 @@
 package com.example.bankAPI.repositories;
 
 import com.example.bankAPI.exceptions.NoAccountException;
+import com.example.bankAPI.models.Account;
 import com.example.bankAPI.models.Blik;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -36,5 +37,17 @@ public class BlikRepository {
         }catch (EmptyResultDataAccessException e){
             return null;
         }
+    }
+    public boolean saveBlik(Blik blik) {
+        if (getBlikByNum(blik.getAccount_num()) != null) {
+            jdbcTemplate.update("UPDATE accounts SET demanded_money=?, account_num=?, target_account=? status=? WHERE account_num=?",
+                    blik.getDemanded_money(),
+                    blik.getAccount_num(),
+                    blik.getTarget_account(),
+                    blik.getStatus().toString(),
+                    blik.getAccount_num());
+            return true;
+        }
+        return false;
     }
 }

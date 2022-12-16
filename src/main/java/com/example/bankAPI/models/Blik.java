@@ -13,4 +13,6 @@ public class Blik {
     private String blik_num;
     private BigDecimal demanded_money;
     private String account_num;
+    private String target_account;
+    private BlikStatus status;
 }
