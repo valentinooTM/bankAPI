@@ -9,6 +9,8 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public class BlikRepository {
     @Autowired
@@ -49,5 +51,11 @@ public class BlikRepository {
             return true;
         }
         return false;
+    }
+
+    public List<Blik> getAllBliksFromAccount(String accountNum){
+        return jdbcTemplate.query("SELECT * FROM blik_nums WHERE account_num=?",
+                BeanPropertyRowMapper.newInstance(Blik.class),
+                accountNum);
     }
 }
