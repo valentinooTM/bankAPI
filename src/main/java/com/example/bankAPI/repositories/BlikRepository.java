@@ -3,6 +3,7 @@ package com.example.bankAPI.repositories;
 import com.example.bankAPI.exceptions.NoAccountException;
 import com.example.bankAPI.models.Account;
 import com.example.bankAPI.models.Blik;
+import com.example.bankAPI.models.BlikStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -22,12 +23,14 @@ public class BlikRepository {
         if(accountRepository.getAccountByAccountNum(accountNum) == null){
             throw new NoAccountException("Konto nie istnieje");
         }
-        jdbcTemplate.update("INSERT INTO blik_nums(blik_num, account_num) VALUES (?,?)",
+        jdbcTemplate.update("INSERT INTO blik_nums(blik_num, account_num, status) VALUES (?,?,?)",
                 blikNum,
-                accountNum);
+                accountNum,
+                BlikStatus.active.toString());
         Blik blik = new Blik();
         blik.setBlik_num(blikNum);
         blik.setAccount_num(accountNum);
+        blik.setStatus(BlikStatus.active);
         return blik;
     }
 

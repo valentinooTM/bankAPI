@@ -15,6 +15,7 @@ import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.concurrent.ForkJoinPool;
 
 @RestController
 @RequestMapping("/blik")
@@ -28,7 +29,7 @@ public class BlikController {
     public Blik generateBlik(@PathVariable("account_num") String accountNum){
         String blikNum = getRandomCode();
         for (Blik blik: blikRepository.getAllBliksFromAccount(accountNum)) {
-            if(blik.getStatus().equals(BlikStatus.active)){
+            if(blik.getStatus() == BlikStatus.active){
                 return blik;
             }
         }
