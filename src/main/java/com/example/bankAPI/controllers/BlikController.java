@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -36,30 +37,47 @@ public class BlikController {
     }
 
     @PostMapping("/pay/{blik_num}/{demanded_money}/{target_account_num}")
-    public String blikPayment(@PathVariable("blik_num") String blikNum,
-                              @PathVariable("demanded_money")BigDecimal demandedMoney,
-                              @PathVariable("target_account_num")String targetAccountNum){
+    public DeferredResult<String> blikPayment(@PathVariable("blik_num") String blikNum,
+                                      @PathVariable("demanded_money")BigDecimal demandedMoney,
+                                      @PathVariable("target_account_num")String targetAccountNum){
+        DeferredResult<String> output = new DeferredResult<>();
         Blik blik = blikRepository.getBlikByNum(blikNum);
         if (blik == null){
-            return "Zły kod blik";
+            output.setResult("Zły kod blik");
         }
         if(blik.getStatus() != BlikStatus.active){
-            return "Nieaktywny kod blik";
+            output.setResult("Nieaktywny kod blik");
         }
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
         Account targetAccount = accountRepository.getAccountByAccountNum(targetAccountNum);
         if(targetAccount == null){
-            return "Konto docelowe nie istnieje";
+            output.setResult("Konto docelowe nie istnieje");
         }
         if(demandedMoney.compareTo(account.getBalance()) >= 0){
-            return "Niewystarczająca ilość środków na koncie";
+            output.setResult("Niewystarczająca ilość środków na koncie");
         }
         blik.setStatus(BlikStatus.to_confirm);
         blik.setDemanded_money(demandedMoney);
         blik.setTarget_account(targetAccountNum);
-        System.out.println(blik.getStatus());
         blikRepository.saveBlik(blik);
-        return "success";
+        ForkJoinPool.commonPool().submit(()->{
+            for(int i=0; i<100; i++){
+                try {
+                    Thread.sleep(1000);
+                    Blik b = blikRepository.getBlikByNum(blikNum);
+                    if(b.getStatus().equals(BlikStatus.used)){
+                        output.setResult("Transakcja potwierdzona");
+                        break;
+                    }
+                    System.out.println("test");
+
+                }catch(InterruptedException e){}
+            }
+            if(!output.hasResult()){
+                output.setResult("Error");
+            }
+        });
+        return output;
     }
 
     @GetMapping("/check-status/{blik_num}")
