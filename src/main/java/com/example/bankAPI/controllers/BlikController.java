@@ -1,10 +1,6 @@
 package com.example.bankAPI.controllers;
 
-import com.example.bankAPI.exceptions.NoAccountException;
-import com.example.bankAPI.models.Account;
-import com.example.bankAPI.models.Blik;
-import com.example.bankAPI.models.BlikStatus;
-import com.example.bankAPI.models.Confirmation;
+import com.example.bankAPI.models.*;
 import com.example.bankAPI.repositories.AccountRepository;
 import com.example.bankAPI.repositories.BlikRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.async.DeferredResult;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.concurrent.ForkJoinPool;
@@ -38,44 +33,47 @@ public class BlikController {
     }
 
     @PostMapping("/pay/{blik_num}/{demanded_money}/{target_account_num}")
-    public DeferredResult<String> blikPayment(@PathVariable("blik_num") String blikNum,
-                                      @PathVariable("demanded_money")BigDecimal demandedMoney,
-                                      @PathVariable("target_account_num")String targetAccountNum){
-        DeferredResult<String> output = new DeferredResult<>();
+    public DeferredResult<BlikTransactionStatus> blikPayment(@PathVariable("blik_num") String blikNum,
+                                                             @PathVariable("demanded_money")BigDecimal demandedMoney,
+                                                             @PathVariable("target_account_num")String targetAccountNum){
+        DeferredResult<BlikTransactionStatus> output = new DeferredResult<BlikTransactionStatus>(31_000L);
         Blik blik = blikRepository.getBlikByNum(blikNum);
         if (blik == null){
-            output.setResult("Zły kod blik");
+            output.setResult(BlikTransactionStatus.BAD_BLIK);
+            return output;
         }
         if(blik.getStatus() != BlikStatus.active){
-            output.setResult("Nieaktywny kod blik");
+            output.setResult(BlikTransactionStatus.BAD_BLIK);
+            return output;
         }
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
         Account targetAccount = accountRepository.getAccountByAccountNum(targetAccountNum);
         if(targetAccount == null){
-            output.setResult("Konto docelowe nie istnieje");
+            output.setResult(BlikTransactionStatus.BAD_TARGET_ACCOUNT);
+            return output;
         }
         if(demandedMoney.compareTo(account.getBalance()) >= 0){
-            output.setResult("Niewystarczająca ilość środków na koncie");
+            output.setResult(BlikTransactionStatus.NOT_ENOUGHT_MONEY);
+            return output;
         }
         blik.setStatus(BlikStatus.to_confirm);
         blik.setDemanded_money(demandedMoney);
         blik.setTarget_account(targetAccountNum);
         blikRepository.saveBlik(blik);
         ForkJoinPool.commonPool().submit(()->{
-            for(int i=0; i<100; i++){
+            for(int i=0; i<29; i++){
                 try {
                     Thread.sleep(1000);
                     Blik b = blikRepository.getBlikByNum(blikNum);
                     if(b.getStatus().equals(BlikStatus.used)){
-                        output.setResult("Transakcja potwierdzona");
+                        output.setResult(BlikTransactionStatus.CONFIRMED);
                         break;
                     }
-                    System.out.println("test");
 
                 }catch(InterruptedException e){}
             }
             if(!output.hasResult()){
-                output.setResult("Error");
+                output.setResult(BlikTransactionStatus.NO_CONFIRMATION);
             }
         });
         return output;
@@ -91,6 +89,9 @@ public class BlikController {
     public ResponseEntity<Confirmation> sendConfirmData(@PathVariable String blik_num, @PathVariable String password){
         Confirmation conf = new Confirmation();
         Blik blik = blikRepository.getBlikByNum(blik_num);
+        if(blik == null){
+            return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        }
         Account targetAccount = accountRepository.getAccountByAccountNum(blik.getTarget_account());
         Account account = accountRepository.getAccountByAccountNum(blik.getAccount_num());
         if(targetAccount == null){
